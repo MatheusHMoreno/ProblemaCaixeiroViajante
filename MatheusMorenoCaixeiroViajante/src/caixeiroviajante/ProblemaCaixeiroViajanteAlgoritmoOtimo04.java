@@ -1,0 +1,163 @@
+
+package caixeiroviajante;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+
+//Rodando 14 cidades em -2 minutos para profundidade 10
+//rodando 15 cidades em 10mintuos com profundidade 10
+//rodando 17 cidades em 4minutos com profundidade 5
+//rodando 18 cidades em  2 minutos com profundidade 5
+//rodando 20 cidades em +-8:20mintuos com profundidade 2 (2129), rodando 20 cidades em 14:50minutos com profundidade 3 sem resultado diferente
+//rodando 21 cidade em 17:30minutos com profundidade 3 
+
+public class ProblemaCaixeiroViajanteAlgoritmoOtimo04 {
+    public static long cost = Long.MAX_VALUE;
+    public static int maxDepth = 2; // definindo o limite maximo de profundidade
+    public static Map<String, Integer> memoTable = new HashMap<>();
+
+    public static void main(String[] args) {
+        FileManager fileManager = new FileManager();
+        ArrayList<String> text = fileManager.stringReader(
+                "C:\\Users\\melqu\\Documents\\ProjetoAnaliseAlgoritmo\\MatheusMorenoCaixeiroViajante\\src\\caixeiroviajante\\teste2.txt");
+        Graph graph = null;
+        int nVertex = 0;
+        for (int i = 0; i < text.size(); i++) {
+            String line = text.get(i);
+            if (i == 0) {
+                nVertex = Integer.parseInt(line.trim());
+                graph = new AdjMatrix(nVertex);
+            } else {
+                int oriVertex = Integer.parseInt(line.split(" ")[0]);
+                String splits[] = line.substring(line.indexOf(" "), line.length()).split(";");
+                for (String part : splits) {
+                    String edgeData[] = part.split("-");
+                    int targetVertex = Integer.parseInt(edgeData[0].trim());
+                    int weight = Integer.parseInt(edgeData[1]);
+
+                    graph.setEdge(oriVertex, targetVertex, weight);
+                    // graph.setEdge(targetVertex, oriVertex, weight);
+                }
+            }
+        }
+        // Escolha inicial com a menor aresta de saida
+        int initialNode = escolherInicioHeuristico(graph);
+        int[] path = new int[nVertex];
+        boolean[] av = new boolean[nVertex];
+        for (int i = 0; i < nVertex; i++) {
+            av[i] = true;
+            path[i] = 1;
+        }
+        path[0] = initialNode;
+        av[initialNode] = false;
+        backTracking(initialNode, path, av, 1, graph);
+    }
+
+    // Função para escolher o início usando a heurística de menor aresta de saída
+    public static int escolherInicioHeuristico(Graph graph) {
+        int menorAresta = Integer.MAX_VALUE;
+        int cidadeEscolhida = -1;
+        for (int i = 0; i < graph.getVertexSize(); i++) {
+            int somaArestas = 0;
+            ArrayList<Integer> adj = graph.getAdjVertex(i);
+            for (int adjacente : adj) {
+                somaArestas += graph.getEdgeWeight(i, adjacente);
+            }
+            if (somaArestas < menorAresta) {
+                menorAresta = somaArestas;
+                cidadeEscolhida = i;
+            }
+        }
+        return cidadeEscolhida;
+    }
+
+    public static void backTracking(int node,
+            int path[],
+            boolean av[],
+            int pos,
+            Graph graph) {
+        if (pos == graph.getVertexSize() && graph.getEdgeWeight(path[pos - 1], path[0]) < cost) {
+            updateCostAndPrintPath(path, pos, graph);
+        } else {
+            ArrayList<Integer> adj = graph.getAdjVertex(node);
+            // ordenarVerticesHeuristica(adj, node, graph);
+            int minRemainingCost = calculateMinRemainingCost(node, path, av, adj, graph, pos);
+            if (minRemainingCost >= cost) {
+                return;
+            }
+            for (int i : adj) {
+                if (av[i] == true) {
+                    updatePathAndRecurse(i, path, av, pos, graph);
+                }
+            }
+            if (pos < maxDepth) {
+                for (int i : adj) {
+                    if (av[i] == true) {
+                        String memoKey = generateMemoKey(path, pos);
+                        if (!memoTable.containsKey(memoKey) || memoTable.get(memoKey) > cost) {
+                            updatePathAndRecurse(i, path, av, pos, graph);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void updateCostAndPrintPath(int[] path, int pos, Graph graph) {
+        int pathCost = graph.getEdgeWeight(path[pos - 1], path[0]);
+        for (int i = 0; i < (pos - 1); i++) {
+            pathCost += graph.getEdgeWeight(path[i], path[i + 1]);
+        }
+        if (pathCost < cost && pathCost > 0) {
+            cost = pathCost;
+            for (int i = 0; i < (pos - 1); i++) {
+                System.out.print(path[i] + "\t");
+            }
+            System.out.print(path[pos - 1] + "\t-\t");
+            System.out.println(pathCost);
+        }
+    }
+
+    private static int calculateMinRemainingCost(int node, int[] path, boolean[] av, ArrayList<Integer> adj,
+            Graph graph, int pos) {
+        int minRemainingCost = Integer.MAX_VALUE;
+        int currentPathCost = 0;
+        for (int i = 0; i < pos; i++) {
+            currentPathCost += graph.getEdgeWeight(path[i], path[i + 1]);
+        }
+        for (int i : adj) {
+            if (av[i] == true) {
+                minRemainingCost = Math.min(minRemainingCost, graph.getEdgeWeight(node, i) + currentPathCost);
+            }
+        }
+        minRemainingCost += graph.getEdgeWeight(node, path[0]);
+        return minRemainingCost;
+    }
+
+    private static void updatePathAndRecurse(int i, int[] path, boolean[] av, int pos, Graph graph) {
+        av[i] = false;
+        path[pos] = i;
+        pos++;
+        backTracking(i, path, av, pos, graph);
+        pos--;
+        av[i] = true;
+    }
+
+    // Função para gerar uma chave para a tabela de memoização
+    public static String generateMemoKey(int path[], int pos) {
+        StringBuilder keyBuilder = new StringBuilder();
+        for (int i = 0; i < pos; i++) {
+            keyBuilder.append(path[i]).append("-");
+        }
+        return keyBuilder.toString();
+    }
+
+    // Função para ordenar vértices adjacentes com base em alguma heurística
+    public static void ordenarVerticesHeuristica(ArrayList<Integer> vertices, int node, Graph graph) {
+        Collections.sort(vertices, Comparator.comparingInt(v -> graph.getEdgeWeight(node, v)));
+    }
+
+}

@@ -44,7 +44,7 @@ public class ProblemaCaixeiroViajanteAlgoritmoGenetico {
 
         FileManager fileManager = new FileManager();
         ArrayList<String> text = fileManager.stringReader(
-                "C:\\Users\\melqu\\Documents\\ProjetoAnaliseAlgoritmo\\MatheusMorenoCaixeiroViajante\\src\\caixeiroviajante\\teste.txt");
+                "C:\\Users\\melqu\\Documents\\ProjetoAnaliseAlgoritmo\\MatheusMorenoCaixeiroViajante\\src\\caixeiroviajante\\teste2.txt");
 
         int nVertex = 3;
 
